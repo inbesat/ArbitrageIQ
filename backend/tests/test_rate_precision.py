@@ -83,7 +83,7 @@ def test_rates_survive_the_database_read(tmp_path):
         row = connection.execute(select(models.fee_assumptions)).mappings().one()
 
     for column, expected in RATES.items():
-        assert str(row[column]) == expected, column
+        assert row[column] == Decimal(expected), column
 
 
 def test_rates_survive_a_restart_with_a_new_engine(tmp_path):
@@ -94,7 +94,7 @@ def test_rates_survive_a_restart_with_a_new_engine(tmp_path):
         row = connection.execute(select(models.fee_assumptions)).mappings().one()
 
     for column, expected in RATES.items():
-        assert str(row[column]) == expected, column
+        assert row[column] == Decimal(expected), column
 
 
 def test_the_stored_text_keeps_three_decimal_places(tmp_path):
@@ -103,9 +103,7 @@ def test_the_stored_text_keeps_three_decimal_places(tmp_path):
 
     connection = sqlite3.connect(tmp_path / "rates.db")
     try:
-        row = connection.execute(
-            "SELECT tcs_rate, tds_rate FROM fee_assumptions"
-        ).fetchone()
+        row = connection.execute("SELECT tcs_rate, tds_rate FROM fee_assumptions").fetchone()
     finally:
         connection.close()
 
@@ -136,9 +134,7 @@ def test_money_columns_still_round_trip_at_two_places(tmp_path):
 
     with engine.connect() as connection:
         row = (
-            connection.execute(
-                select(models.products).where(models.products.c.sku == "RATE-TEST")
-            )
+            connection.execute(select(models.products).where(models.products.c.sku == "RATE-TEST"))
             .mappings()
             .one()
         )

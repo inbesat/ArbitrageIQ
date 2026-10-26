@@ -14,7 +14,16 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { ApiErrorBody } from './types';
 
-export const API_BASE = '/api/v1';
+/**
+ * The one API base URL every request goes through.
+ *
+ * Deployed builds point straight at the Render API through `VITE_API_BASE_URL`
+ * (set in the Netlify dashboard); there is no proxy in production. Local
+ * development leaves it unset and falls back to the relative `/api/v1` that
+ * `vite.config.ts` proxies to 127.0.0.1:8000. Trailing slashes are stripped so
+ * a `.../api/v1/` value cannot produce a doubled `/api/v1//health`.
+ */
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/+$/, '');
 
 /** Which of the three failure families a request hit. */
 export type ApiErrorKind = 'network' | 'client' | 'server';

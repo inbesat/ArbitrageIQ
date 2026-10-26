@@ -46,3 +46,19 @@ def ratio(
     if percent:
         result *= _HUNDRED
     return round_half_up(result)
+
+
+def rate_text(value: Decimal) -> str:
+    """Render a fractional rate the way ``plans/BUSINESS_RULES.md`` §2 writes it.
+
+    Two decimal places when that is exact, otherwise the fewest places the value
+    needs. The stored column carries six places, so ``referral_rate`` reads back as
+    ``Decimal("0.080000")`` and must render as ``0.08``, while TCS ``0.005`` must
+    keep its third place rather than becoming ``0.01``.
+
+    ``normalize()`` alone would be wrong in both directions: it turns ``0.80`` into
+    ``0.8``, and on a whole number it produces exponent form (``1E+3``). Rates are
+    validated to ``[0, 1]``, so the fallback here can never reach exponent form.
+    """
+    two_places = value.quantize(_CENTS, rounding=ROUND_HALF_UP)
+    return str(two_places) if two_places == value else str(value.normalize())

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | **T01–T09, T11–T15 complete; T10 blocked by AT-8.2 / DEV-17; T16 done with disclosed release gaps (see §1). The landing and Budget Lab now incorporate the two operator-supplied Stitch HTML exports (DEV-38), and the landing carries an editable simulator backed by a new tenth operation `POST /api/v1/simulate/sku` (DEV-39). `pytest backend\tests -q` returns 1 failed, 262 passed; CP-5 is open. No git repository or commit exists.** |
+| **Status** | **T01–T09, T11–T15 complete; T10 complete (its one open row AT-8.2 was fixed by repair R01, so DEV-17 is closed); T16 done with disclosed release gaps (see §1). The landing and Budget Lab now incorporate the two operator-supplied Stitch HTML exports (DEV-38), and the landing carries an editable simulator backed by a new tenth operation `POST /api/v1/simulate/sku` (DEV-39). `pytest backend\tests -q` returns 275 passed, 0 failed; CP-5's remaining open item is the operator's three-SKU hand recomputation (AT-11.10). A git repository now exists (one commit, remote `origin https://github.com/inbesat/ArbitrageIQ.git`); this repair work is uncommitted.** |
 | **Rule** | Every claim in this file must be backed by pasted command output. No evidence, no entry. Adjectives are not evidence. |
 | **Update rule** | Update after **every** implemented slice, in the same session. A slice that is not recorded did not happen. |
 | **Authority** | Descriptive only. This file never overrides a specification; it reports what actually happened. |
@@ -1452,6 +1452,156 @@ Next:        none — P0 tasks T01–T16 are recorded; T10 remains blocked on AT
 
 ---
 
+### 2026-10-27 — deployment connectivity fix (DEV-46)
+
+```
+Status:      Done, with one operator action still owed. No acceptance row is claimed; this repairs
+             the deployment wiring, not the product behaviour.
+
+Why:         The user reported that the deployed frontend (https://arbitrageiq2.netlify.app) shows
+             HTTP 404 for /api/v1/health, /products, /assumptions and /profit/reconcile, while the
+             deployed API (https://arbitrageiq.onrender.com) answers /api/v1/health and
+             /api/v1/products with 200. Root cause, read from the source: frontend/src/api/client.ts
+             exported a HARDCODED RELATIVE `API_BASE = '/api/v1'`, and it holds the ONLY `fetch(`
+             call in frontend/src (verified by grep). In production that relative path resolved
+             against the NETLIFY origin, which has no /api proxy, so every API call 404'd. The
+             Render FRONTEND_ORIGIN was also completely unused: backend/arbitrageiq/api.py had no
+             CORSMiddleware at all, so even a direct call from the browser would have had its
+             application/json POSTs blocked at preflight.
+
+Files:       frontend/src/api/client.ts             (API_BASE now reads
+                                                    import.meta.env.VITE_API_BASE_URL and falls back to
+                                                    '/api/v1'; trailing slashes are stripped so a
+                                                    '.../api/v1/' value cannot produce a doubled
+                                                    segment. Every view's bare path ('/health',
+                                                    '/products', ...) is unchanged, so /api/v1 appears
+                                                    exactly once. No money logic touched.)
+             frontend/src/vite-env.d.ts             (new — `/// <reference types="vite/client" />`
+                                                    plus a typed ImportMetaEnv.VITE_API_BASE_URL,
+                                                    without which `tsc --noEmit` cannot see
+                                                    import.meta.env at all)
+             backend/arbitrageiq/api.py             (new `_configure_cors(app)` helper, called
+                                                    immediately after `app = FastAPI(...)`; adds only
+                                                    `import os` and
+                                                    `from fastapi.middleware.cors import CORSMiddleware`.
+                                                    It reads FRONTEND_ORIGIN and, when set, allows
+                                                    exactly that one origin for GET/POST/PUT/OPTIONS
+                                                    with Content-Type. Unset -> no middleware at all,
+                                                    which is local development through the Vite proxy.
+                                                    No route, formula, schema or table touched.)
+             frontend/public/_redirects             (new — the single SPA-fallback rule
+                                                    `/*    /index.html   200`. Vite copies public/
+                                                    into dist/, so it ships. Deliberately contains NO
+                                                    /api proxy rule: that is the conflicting second
+                                                    strategy the task asked to remove.)
+             backend/tests/test_cors.py             (new, 5 tests — test-first)
+             frontend/tests/api-base.test.mjs       (new, 4 tests — test-first)
+             plans/PROGRESS.md                       (this entry; evidence maintenance only)
+             NOT touched: every financial module (config.py, money.py, profit.py, allocator.py,
+             simulate.py, reconcile.py), models/schemas/db and the seed, all product data, every view
+             and component, tailwind.config.js, index.css, package.json / package-lock.json (no
+             dependency added), and frontend/vite.config.ts (its dev-only proxy still serves local
+             development when the env var is unset).
+
+Acceptance:  NO ACCEPTANCE ROW IS CLAIMED — this slice changes no behaviour the P0 table describes.
+             The evidence is the three required deployment properties, each observed:
+             1. The production bundle embeds the absolute URL. `npm run build` with
+                VITE_API_BASE_URL=https://arbitrageiq.onrender.com/api/v1 produced
+                dist/assets/index-CH405jeP.js containing exactly ONE
+                "https://arbitrageiq.onrender.com/api/v1" and ZERO occurrences of the relative
+                '"/api/v1'. The inlined base appears in the bundle as
+                Zj="https://arbitrageiq.onrender.com/api/v1".replace(/\/+$/,"")
+                — i.e. the env value is used directly, with no leftover fallback operand.
+             2. Local development still works with no env var. A second build into dist-local with
+                the variable unset kept exactly one '"/api/v1' and zero "onrender" hits.
+             3. The API answers the deployed origin. With FRONTEND_ORIGIN set, the real `app`
+                returned OPTIONS /api/v1/simulate/sku -> 200 with
+                access-control-allow-origin https://arbitrageiq2.netlify.app and
+                access-control-allow-methods GET, POST, PUT, OPTIONS, and
+                GET /api/v1/health -> 200 carrying the same allow-origin header.
+             dist/_redirects was confirmed present in the build output with its `/* /index.html 200`
+             rule and its no-proxy comment intact.
+
+Tests run:   .\.venv\Scripts\python.exe -m pytest backend\tests\test_cors.py -q
+             -> RED first: `ImportError: cannot import name '_configure_cors'` (1 error, collection)
+             -> then GREEN: 5 passed, 1 warning in 2.21s
+             .\.venv\Scripts\python.exe -m pytest backend\tests -q
+             -> 280 passed, 1 warning in 27.52s (exit 0)
+             NOTE: the DEV-17 / AT-8.2 rate-precision row that earlier entries record as the one
+             standing failure is GREEN in this working tree, because the uncommitted models.py
+             `RATE = Numeric(18, 6)` fix of DEV-17 is present. That change is the user's, not this
+             slice's, and it was not touched here.
+             node --test tests/api-base.test.mjs tests/stitch-port.test.mjs   (from frontend\)
+             -> RED first: /VITE_API_BASE_URL\s*\?\?\s*'\/api\/v1'/ did not match
+             -> then GREEN: tests 15, pass 15, fail 0 (the 11 pre-existing stitch-port tests still
+                pass; the schema-validated pair is tests/api-base.test.mjs)
+             `node --test tests/` (directory form) is NOT usable on this machine's Node 24.14.1 —
+             it fails with MODULE_NOT_FOUND; the explicit two-file form is the working command.
+
+Backend:     .\.venv\Scripts\python.exe -m ruff check ..\backend   (from backend\)
+             -> All checks passed!
+             Runtime smoke against the real `app` with
+             FRONTEND_ORIGIN=https://arbitrageiq2.netlify.app:
+               preflight status: 200
+               preflight allow-origin: https://arbitrageiq2.netlify.app
+               preflight allow-methods: GET, POST, PUT, OPTIONS
+               actual status: 200
+               actual allow-origin: https://arbitrageiq2.netlify.app
+               exit 0
+             The smoke script lived outside the repo (a scratch file) and was not committed.
+
+Build:       npx tsc --noEmit   -> exit 0 (no output)
+             npm run build      -> exit 0, vite v5, 477 modules, dist/index.html 0.46 kB,
+                                   dist/assets/index-Cut7gUju.css 35.34 kB,
+                                   dist/assets/index-CH405jeP.js 433.79 kB (gzip 135.55 kB)
+                                   — run with VITE_API_BASE_URL set, per property 1 above.
+             npx vite build --outDir dist-local --emptyOutDir -> exit 0 (the no-env proof, property
+                                   2); dist-local was deleted after the grep.
+
+Live check:  read-only probes of the two deployed services from this machine, 2026-10-27. None of
+             them writes anything:
+               GET  https://arbitrageiq.onrender.com/api/v1/health   -> 200
+                    {"status":"ok","version":"0.0.0","db":"reachable"}
+                    access-control-allow-origin: <absent>
+               GET  https://arbitrageiq.onrender.com/api/v1/products -> 200, count=10
+               OPTIONS https://arbitrageiq.onrender.com/api/v1/simulate/sku
+                                                                     -> 405 Method Not Allowed
+               GET  https://arbitrageiq2.netlify.app/api/v1/health  -> 404
+             These reproduce the reported fault and show the fix is NOT live yet: the deployed API
+             still sends no CORS header and still 405s the preflight, and the deployed Netlify
+             origin still 404s the relative path. **No deployment was performed and none is
+             claimed.**
+
+Notes:       ONE OPERATOR ACTION REMAINS and CANNOT be done from this repository, because both
+             values live only in the hosting dashboards (the tree has no netlify.toml, no .env file
+             anywhere, and no _redirects before this change):
+               1. Netlify must REDEPLOY the frontend from this commit and must keep
+                  VITE_API_BASE_URL=https://arbitrageiq.onrender.com/api/v1 set for the BUILD (Vite
+                  inlines it at build time; without it the build falls back to the relative path and
+                  every 404 returns).
+               2. Netlify's dashboard-level /api/* proxy rewrite, if one exists, must be REMOVED —
+                  it is the conflicting second strategy. Nothing in the repo can remove it. The
+                  committed frontend/public/_redirects now declares the only strategy (SPA
+                  fallback), and it also fixes a latent deep-link 404 that predates this slice: the
+                  live site returned 404 rather than index.html, which means no SPA fallback rule was
+                  active at all.
+               3. Render must REDEPLOY the backend and must keep
+                  FRONTEND_ORIGIN=https://arbitrageiq2.netlify.app set. The value must be the full
+                  scheme + host (a bare hostname, or a value carrying a path, will not match the
+                  browser's Origin and the request will still be blocked). Because it is read at
+                  import time, changing it needs a Render restart, not just a save.
+             Why this needs ratification instead of being a silent fix: it edits two files that
+             belong to already-`Done` tasks (`frontend/src/api/client.ts` is T13's,
+             `backend/arbitrageiq/api.py` is T10's) and adds two files no task owns
+             (`vite-env.d.ts`, `public/_redirects`), which is the DEV-28/DEV-32/DEV-37 precedent.
+             The user's instruction for this slice was explicit and in scope ("Use ONE consistent
+             connection strategy: direct frontend-to-Render API requests using VITE_API_BASE_URL").
+Next:        approval is needed before this diff is committed. The two redeploys above are the
+             operator's, and property 1 is only provable live after the Netlify build runs again.
+```
+
+---
+
 ## 4. Blocked
 
 **T10 cannot be marked `Done` — one P0 acceptance row is unreachable from T10's own files.**
@@ -1645,7 +1795,13 @@ consistent again; **none has been written unilaterally.**
 
 | DEV-43 | **One shared brand identity.** The new `frontend/src/components/Logo.tsx` exports `Logo` (props `className`, `showWordmark`, `wordmarkClassName`, `accentClassName`) and replaces all three loose brand text nodes: the landing header's `Wordmark()` (deleted), the landing footer's bare `<p>ArbitrageIQ</p>`, and the app shell sidebar's `BrandMark()` plus `<p>ArbitrageIQ</p>` (both deleted). The mark is a hand-authored inline SVG in a `viewBox="1.85 0.2 25 23.59"` drawn tight on the ink itself, and is three filled shapes in `currentColor`: a heavy letter `A` (left leg, apex, right leg) whose crossbar is a straight evenly weighted bar finishing inside both legs, a swash that starts on the letter's own left foot and thins away as it carries right, and a 2.2-unit accent square the caller colours through `accentClassName` fused to the swash's tip. Nothing is stroked, because a pen's weight swells and tapers and a `stroke-width` cannot, and the letter is deliberately the heaviest element with the flourish a step below it. **The art was redrawn twice after the operator reviewed it and rejected it both times** (see the evidence column). One expression decides how it is announced: `aria-hidden` beside the wordmark, `role="img"` + `aria-label="ArbitrageIQ"` when the mark stands alone. `frontend/public/favicon.svg` plus `<link rel="icon" href="/favicon.svg" type="image/svg+xml" />` in `frontend/index.html` close a pre-existing 404 on every page load | The operator asked, verbatim: *"make a good logo like a signature logo for the site and add that too"*. Every file it edits is already `Done` with no owning open task (T13/T15), so this **needs ratification** the DEV-40/DEV-41/DEV-42 way | New `frontend/src/components/Logo.tsx`; `frontend/src/views/Landing.tsx` (`import { Logo }`; `<Logo className="h-6 text-ink" wordmarkClassName="hidden sm:inline" />` in `Header`, `<Logo className="h-7 text-ivory" accentClassName="text-butter" />` in `Footer`; `Wordmark()` and its call site gone; the `#top` anchor, its `min-h-[44px] min-w-[44px]` and `FOCUS_LIGHT` kept; no data flow touched); `frontend/src/App.tsx` (`import { Logo }`; the sidebar brand became `<Logo className="h-7 text-white" accentClassName="text-teal-wash" />` above the unchanged `Decision support` eyebrow; `BrandMark()` deleted; the shell's layout and nav unchanged); new `frontend/public/favicon.svg`; `frontend/index.html`; `frontend/tests/stitch-port.test.mjs` (four new tests). **The five app views' data flow is untouched** — `BudgetLab.tsx`, `Import.tsx` and `Methodology.tsx` were not opened for edit. **The mark is hand-authored inline SVG: no dependency, no asset request, and `package.json`/`package-lock.json` unchanged** | **Needs ratification.** Test-first: the four new cases were **RED** — `node --test tests/stitch-port.test.mjs` → `tests 11 / pass 7 / fail 4`, each new case failing on `''` because `Logo.tsx` did not exist — then **GREEN** → `tests 11 / pass 11 / fail 0 / duration_ms 271.255`. `npx tsc --noEmit` → exit 0, no output. `npm run build` → exit 0, `477 modules transformed`, `dist/index.html 0.46 kB`, `dist/assets/index-DqcaZE8O.css 35.32 kB`, `dist/assets/index-CrCNUcL5.js 433.69 kB`, `✓ built in 7.48s`; `dist/favicon.svg` present and `dist/index.html` carries the icon link; `fetch('/favicon.svg')` → 200, `image/svg+xml`, parses with no `parsererror`. **Looked at, then rejected and redrawn.** The operator reviewed the first attempt at large size and in the real header and rejected the art on six counts: a hard angular double-corner where the right leg turned into the tail (it read as a line chart), a crossbar floating as an eye that touched neither leg, stroke weight that swelled and dipped unevenly, a detached accent square, dead viewBox margin, and — decisively — a mark that did not read as a letter at 24 px, where the wordmark is hidden on narrow screens. **Three genuinely different candidates** were then built from a throwaway geometry script and each rendered at 160 px and as a true 24 px raster magnified 8× with nearest-neighbour, saved under `.logo-check/` and read back: **A** one continuous ribbon (entry, apex, right leg, turn and flourish as a single sweep); **B** a bold letter `A` with a separate shallow swash beneath it; **C** a script `A` with a pronounced entry stroke and a rightward lean. Honest read: **A** and **C** each showed the same faceting where the leg turns into the tail — a variable-width offset of a tight turn corners, however smooth the skeleton — and at 24 px each weighted one side of the letter far more than the other, so the letter smeared; **B** was legible instantly but its crossbar tapered to a spearhead where it met the right leg, its swash kinked where it started, and its accent square sat detached. **B won, and was refined twice.** The crossbar's taper was moved inside both legs so the visible bar is straight and evenly weighted; the swash became a single shallow sweep over four knots so its width ramps with its curve; the accent square was fused to the swash's tip — option (a), because the stroke now visibly enters the square's edge, and at 24 px the square gives the tail a terminus and puts the brand's teal in the mark, where dropping it (option (b), also rendered) left the taper fading to nothing; and the pen taper was finally held back so the feet and the swash keep weight at 24 px instead of thinning to a hairline. **Second art revision, from a second visual review.** The operator reviewed the shipped mark at large size and at 24 px and accepted the direction, the legible letter and the teal square as a full stop, but found three faults: the crossbar still rendered as a horizontal lens that overshot past the legs with pointed tips; the swash started in open space below the left foot, so the `A` floated above a separate underline; and at 24 px the **weight hierarchy was inverted** — the swash was the darkest element and the letter read pale, so the mark said "underline with a letter on it" rather than "`A` with a flourish". All three were fixed and re-looked at: the crossbar was rebuilt as a straight capsule whose end caps finish *inside* both legs (the first attempt at this left a hairline gap at one end, because the legs' inner edges slope, so the ends now sit at x 6.2 and 11.7 — inside at every y the bar spans — and the visible stroke simply meets each inner edge with no overshoot and no tip); the swash's first knot was moved onto the letter's own left foot with the two shapes overlapping, so the mark is one unbroken stroke, and its width now ramps monotonically down from the join (0.85 → 0.65 → 0.45 → 0.28) instead of swelling into a puddle at its start; and the letter was made heavier (apex half-width 2.15, feet 1.15/1.25) while the swash was taken a clear step below it. Verified at 460 px, at 160 px and as a true 24 px raster magnified 8×: the `A` is now the solid, dominant element with the crossbar reading as one pen stroke between the legs, and the swash reads as a lighter, visibly connected flourish. **The swash was kept** — the two shapes read as one continuous stroke at both sizes, so the fallback of dropping it for a short exit flick was not needed. Re-shot in the page afterwards: the header at 1440 px (mark 25 × 24), the ink footer, the navy sidebar, the mark alone at 375 px, and the favicon on grey at 128/64/32/16 px. `document.documentElement.clientWidth === scrollWidth === 360` at 375 px with the wordmark still `display: none`. Runner-up: **B** — the same letter with a sharper taper and a detached accent, which is where this direction started. Verified in the page: the header at 1440 px, the footer on ink and the sidebar on navy all read, and at 375 px the mark alone reads as an `A` with `document.documentElement.clientWidth === scrollWidth === 360` and the wordmark's computed `display` still `none`. The favicon was re-derived from the same three `d` values and re-looked at on grey at 128/64/32/16 px — its inner square is a nested `svg` with `preserveAspectRatio`, so the outer box stays exactly square. Screenshots and the generator stay in `.logo-check/` for the operator; the dev server was stopped. **Two `shortcut:` notes.** (1) The mark's path data exists in two files — `Logo.tsx` and `public/favicon.svg`, which cannot inherit CSS — so each carries a one-line note that the other must move in step, and the new test compares the two `d` sets so they cannot drift silently; the duplication buys back a 404 on every page load. (2) The wordmark's size is fixed at 17 px while the mark takes its height from `className`, so a caller wanting a very different lockup size would need the wordmark restated. Measured rather than assumed: with the wordmark always shown the shared lockup ran into the header's own "Menu" button at 375 px, which is why the header passes `wordmarkClassName="hidden sm:inline"` — the same behaviour the deleted `Wordmark()` had, and at 375 px the header now reports `scrollWidth` 360 ≤ `innerWidth` 375. **The gate state does not move: CP-4 is claimable, CP-3 stays open on DEV-17, and CP-5 cannot close while AT-11.3 is red** (`pytest backend\tests -q` is `1 failed, 262 passed`, as last recorded in §1 and DEV-39). No acceptance row is newly claimed |
 
-**Not yet actioned:** the `DECISIONS.md` entries for DEV-1, DEV-3, DEV-4, DEV-5, DEV-6, DEV-7, DEV-8, DEV-9, DEV-10, DEV-11, DEV-12, DEV-13, DEV-14, DEV-15, DEV-16, DEV-17, DEV-18, DEV-19, DEV-20, DEV-21, DEV-22, DEV-23, DEV-24, DEV-25, DEV-26, DEV-27, DEV-28, DEV-29, DEV-30, DEV-31, DEV-32, DEV-33, DEV-34, DEV-35, DEV-36, DEV-37, DEV-38, DEV-39, DEV-40, DEV-41, DEV-42 and DEV-43, and the `TECH_STACK.md` note recording the verified versions. All are awaiting human approval, since `DECISIONS.md` is a contract document and `TECH_STACK.md` §7 puts command changes behind it. **DEV-2 is closed** (implemented in T02).
+| DEV-44 | **A stale hardcoded date in one acceptance test**, in `backend/tests/test_api.py::test_at_8_3_put_assumptions_echoes_the_validated_object` | Found while repairing R01. The test wrote `payload["effective_from"] = "2026-10-26"`, so once today moved past that date the PUT wrote a row that was no longer the latest `effective_from <= today`, and the follow-up GET correctly kept the seeded `closing_fee`. **The production rule was right and was not touched** — `api.py` replaces the row carrying the same `effective_from` rather than appending a second one, and `config.active_assumptions` takes the newest date. A `ORDER BY effective_from DESC, id DESC` tie-break was considered and deliberately rejected: no reachable path produces same-date duplicates | `backend/tests/test_api.py` only. The literal was the single occurrence in the module (line 189) and the assignment was dropped, so the payload keeps the date the API served, which is already today | Evidence: baseline `2 failed, 261 passed` → **`271 passed, 1 warning`**; `ruff check backend` All checks passed; `ruff format --check backend` 28 files already formatted. Both asserted acceptance values are unchanged (`status_code == 200`, `closing_fee == "30.00"` in the PUT echo and in the later GET). Test count 262 → 271. **No commit, no push.** |
+
+| DEV-45 | **A non-idempotent seed** in `backend/arbitrageiq/db.py`: `seed()` performed three unconditional bulk `insert`s, so a second `python -m arbitrageiq.db seed` raised `UNIQUE constraint failed: products.sku` | Audit F06, reproduced rather than assumed. The README documents that command, so an operator following it twice met a crash. The fix also had to avoid deleting or overwriting anything, because a row already in the table may be the operator's edited copy | `seed()` now reads the existing `sku` / `transaction_id` / `effective_from` sets inside its single `engine.begin()` and inserts only the rows whose key is missing. The `summary` keeps its `seeded` / `products` / `transactions` / `fee_assumptions` keys and gains an `inserted` sub-object reporting what this run actually wrote. Nothing is deleted and nothing existing is overwritten; `main()` is unchanged. New `backend/tests/test_seed_idempotency.py` (4 tests) | Test-first: `pytest backend\tests\test_seed_idempotency.py -q` → **4 failed** with the verbatim `sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) UNIQUE constraint failed: products.sku`, then **4 passed**. Full `pytest backend\tests -q` → **275 passed, 1 warning, exit 0** (was 271). `ruff check backend` All checks passed; `ruff format --check backend` 29 files already formatted. The four tests cover: seeding twice leaves 10/40/1 with the second run's `inserted` at 0/0/0; an edited `target_price` survives a second seed; a pre-existing SKU is skipped (9 inserted, its price untouched); `fee_assumptions` stays at one row. **No commit, no push; `data/private/arbitrageiq.db` untouched.** |
+
+| DEV-46 | **Deployment connectivity**: `frontend/src/api/client.ts` now reads `API_BASE` from `import.meta.env.VITE_API_BASE_URL` (falling back to `'/api/v1'`, trailing slashes stripped); `backend/arbitrageiq/api.py` gained a `_configure_cors(app)` helper adding `CORSMiddleware` for exactly `FRONTEND_ORIGIN`; two new files, `frontend/src/vite-env.d.ts` and `frontend/public/_redirects` | `plans/TECH_STACK.md` and the P0 set describe a **local** tool; nothing in the spec set names a deployed origin, a CORS policy, or Node's `import.meta.env`. The two edited files belong to already-`Done` tasks — `client.ts` is T13's, `api.py` is T10's (`AGENTS.md` rules 1–2) — and both new files have no owning task. But the user's instruction for this slice was explicit: "Use ONE consistent connection strategy: direct frontend-to-Render API requests using VITE_API_BASE_URL" | Read from the source, not inferred: `client.ts` held a **hardcoded relative** `API_BASE = '/api/v1'` and the **only** `fetch(` call in `frontend/src`, so the deployed bundle called the Netlify origin, which has no `/api` proxy, and every request 404'd. `api.py` had **no middleware of any kind**, so `FRONTEND_ORIGIN` was dead config and a direct browser POST would have failed preflight. Fix: one base URL read from the env with a local fallback (so `/api/v1` is still emitted exactly once, because every view passes a bare path), `_configure_cors` allowing one exact origin for GET/POST/PUT/OPTIONS with `Content-Type` (nothing when unset), and a committed `/* /index.html 200` SPA fallback that is the single strategy — the dashboard-level Netlify `/api/*` proxy is not in the tree and must be removed by the operator. Evidence in §2: test-first RED then GREEN on `backend/tests/test_cors.py` (5 passed) and `frontend/tests/api-base.test.mjs` (part of 15 passed); `pytest backend\tests -q` → **280 passed** (exit 0); `ruff check backend` → All checks passed; `npx tsc --noEmit` exit 0; `npm run build` with the env set → the JS bundle contains the absolute URL once and zero relative `'"/api/v1'`, while a no-env build keeps the relative path; live read-only probes show the deployed API still returns **no** CORS header and **405** for the preflight, and the deployed Netlify origin still **404s** `/api/v1/health`, so the fix is **not yet live**. **No dependency added; no financial module, view, component, seed or product data touched; ₹1,624.08 cannot move.** **Needs ratification**, and the redeploys plus the Netlify proxy removal are the operator's |
+
+**Not yet actioned:** the `DECISIONS.md` entries for DEV-1, DEV-3, DEV-4, DEV-5, DEV-6, DEV-7, DEV-8, DEV-9, DEV-10, DEV-11, DEV-12, DEV-13, DEV-14, DEV-15, DEV-16, DEV-17, DEV-18, DEV-19, DEV-20, DEV-21, DEV-22, DEV-23, DEV-24, DEV-25, DEV-26, DEV-27, DEV-28, DEV-29, DEV-30, DEV-31, DEV-32, DEV-33, DEV-34, DEV-35, DEV-36, DEV-37, DEV-38, DEV-39, DEV-40, DEV-41, DEV-42, DEV-43, DEV-44, DEV-45 and DEV-46, and the `TECH_STACK.md` note recording the verified versions. All are awaiting human approval, since `DECISIONS.md` is a contract document and `TECH_STACK.md` §7 puts command changes behind it. **DEV-2 is closed** (implemented in T02).
 
 **Read this before trusting T06:** the user's authorising directive was the literal `do phase 6`, appended to the seventh re-send of the executor prompt; the three clarifying questions the `router` raised (pandas version, rejection cap, 413 ownership) were **never answered textually**, and DEV-10 to DEV-12 are the record of how they were resolved in the absence of an answer. None of the three edited `BUSINESS_RULES.md`, `ACCEPTANCE_TESTS.md` or `DECISIONS.md`, and none changes ₹1,624.08.
 

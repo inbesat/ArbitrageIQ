@@ -19,9 +19,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from arbitrageiq.money import round_half_up
+from arbitrageiq.money import rate_text, round_half_up
 
-#: The 14 configurable assumption keys that hold a Decimal
+#: The 13 configurable assumption keys that hold a Decimal
 #: (``plans/BUSINESS_RULES.md`` §2).
 ASSUMPTION_MONEY_KEYS = (
     "referral_rate",
@@ -37,6 +37,21 @@ ASSUMPTION_MONEY_KEYS = (
     "default_salvage",
     "default_budget",
     "default_max_share_per_sku",
+)
+
+#: The eight of those keys that are fractional rates rather than rupee amounts
+#: (``plans/BUSINESS_RULES.md`` §2). Only these may carry more than two places.
+ASSUMPTION_RATE_KEYS = frozenset(
+    {
+        "referral_rate",
+        "product_gst_rate",
+        "gst_on_fees_rate",
+        "tcs_rate",
+        "tds_rate",
+        "default_sell_through",
+        "default_salvage",
+        "default_max_share_per_sku",
+    }
 )
 
 #: The four Decimal columns of a product row.
@@ -181,8 +196,16 @@ class SimulateSkuRequest(BaseModel):
 
 
 def assumption_payload(values: Mapping[str, Any]) -> dict[str, Any]:
-    """Render one assumption record as the wire object."""
-    payload: dict[str, Any] = {key: raw_text(values[key]) for key in ASSUMPTION_MONEY_KEYS}
+    """Render one assumption record as the wire object.
+
+    Rates render through :func:`money.rate_text`, so the six-place column value
+    ``0.080000`` reaches the wire as ``0.08`` while a sub-cent rate such as TCS
+    ``0.005`` keeps the places it needs. Amounts keep :func:`raw_text`.
+    """
+    payload: dict[str, Any] = {
+        key: rate_text(values[key]) if key in ASSUMPTION_RATE_KEYS else raw_text(values[key])
+        for key in ASSUMPTION_MONEY_KEYS
+    }
     payload["fee_gst_recoverable"] = bool(values["fee_gst_recoverable"])
     payload["effective_from"] = str(values["effective_from"])
     payload["note"] = str(values.get("note") or "")

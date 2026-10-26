@@ -135,11 +135,40 @@ def seed(engine: Engine) -> dict[str, object]:
         assumptions_row[key] = getattr(defaults, key)
 
     with engine.begin() as connection:
-        connection.execute(insert(models.products), products)
-        connection.execute(insert(models.transactions), transactions)
-        connection.execute(insert(models.fee_assumptions), [assumptions_row])
+        existing_skus = set(connection.execute(select(models.products.c.sku)).scalars())
+        existing_transactions = set(
+            connection.execute(select(models.transactions.c.transaction_id)).scalars()
+        )
+        existing_dates = set(
+            connection.execute(select(models.fee_assumptions.c.effective_from)).scalars()
+        )
+
+        # Seeding fills gaps and nothing else. A row whose key is already present is
+        # the operator's copy — possibly edited — so it is skipped, never replaced,
+        # which is what makes a second ``seed`` a no-op instead of a UNIQUE failure
+        # on ``products.sku`` (audit F06).
+        new_products = [row for row in products if row["sku"] not in existing_skus]
+        new_transactions = [
+            row for row in transactions if row["transaction_id"] not in existing_transactions
+        ]
+        new_assumptions = (
+            [] if assumptions_row["effective_from"] in existing_dates else [assumptions_row]
+        )
+
+        if new_products:
+            connection.execute(insert(models.products), new_products)
+        if new_transactions:
+            connection.execute(insert(models.transactions), new_transactions)
+        if new_assumptions:
+            connection.execute(insert(models.fee_assumptions), new_assumptions)
+
         summary = {
             "seeded": True,
+            "inserted": {
+                "products": len(new_products),
+                "transactions": len(new_transactions),
+                "fee_assumptions": len(new_assumptions),
+            },
             "products": connection.execute(
                 select(func.count()).select_from(models.products)
             ).scalar_one(),

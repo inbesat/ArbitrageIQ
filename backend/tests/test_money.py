@@ -12,7 +12,7 @@ import ast
 from decimal import Decimal
 from pathlib import Path
 
-from arbitrageiq.money import NA, ratio, round_half_up
+from arbitrageiq.money import NA, rate_text, ratio, round_half_up
 
 PACKAGE_DIR = Path(__file__).resolve().parents[1] / "arbitrageiq"
 
@@ -61,6 +61,25 @@ def test_ratio_rounds_to_two_places_half_up() -> None:
 
 def test_ratio_percent_respects_the_na_rule() -> None:
     assert ratio(Decimal("250.00"), Decimal("0"), percent=True) == NA
+
+
+def test_rate_text_keeps_the_places_the_rate_needs() -> None:
+    # BUSINESS_RULES.md §2 writes rates with two places, except TCS 0.005 and TDS
+    # 0.001 which need a third. The column carries six, so both must be trimmed.
+    assert rate_text(Decimal("0.080000")) == "0.08"
+    assert rate_text(Decimal("0.180000")) == "0.18"
+    assert rate_text(Decimal("0.800000")) == "0.80"
+    assert rate_text(Decimal("0.500000")) == "0.50"
+    assert rate_text(Decimal("0.400000")) == "0.40"
+    assert rate_text(Decimal("0.005000")) == "0.005"
+    assert rate_text(Decimal("0.001000")) == "0.001"
+    assert rate_text(Decimal("0.002500")) == "0.0025"
+
+
+def test_rate_text_never_produces_exponent_form() -> None:
+    for value in ("0", "1", "0.000000", "1.000000"):
+        rendered = rate_text(Decimal(value))
+        assert "E" not in rendered.upper(), rendered
 
 
 def _money_modules() -> list[Path]:

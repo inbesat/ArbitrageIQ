@@ -186,7 +186,12 @@ def test_at_8_3_put_assumptions_echoes_the_validated_object(tmp_path):
     client = _client(tmp_path)
     payload = client.get(f"{BASE}/assumptions").json()
     payload["closing_fee"] = "30.00"
-    payload["effective_from"] = "2026-10-26"
+    # Keep the date the API served, which is today: that makes this the latest
+    # row, and a PUT replaces the row carrying the same effective_from rather
+    # than appending a second one (api.py, put_assumptions).
+    # DEV-44: this line used to hardcode a date, so once that date passed the
+    # PUT wrote a superseded row and the assertion below failed on a correct
+    # backend.
 
     response = client.put(f"{BASE}/assumptions", json=payload)
 

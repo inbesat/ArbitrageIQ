@@ -1,0 +1,4 @@
+# SPA fallback: React Router owns every non-API path (deep links, refreshes).
+# The API is called directly on Render through VITE_API_BASE_URL, so there is
+# deliberately no /api proxy rule here.
+/*    /index.html   200

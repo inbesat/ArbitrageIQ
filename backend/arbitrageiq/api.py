@@ -23,12 +23,14 @@ plus the §11.3 honesty statement. A breach of the B1-B10 invariants returns a
 from __future__ import annotations
 
 import dataclasses
+import os
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, FastAPI, File, Form, UploadFile
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import Engine, delete, insert, select, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -74,11 +76,32 @@ class ApiError(Exception):
         return payload
 
 
+def _configure_cors(app: FastAPI) -> None:
+    """Allow exactly the deployed frontend origin, when one is configured.
+
+    Production serves the UI from Netlify and calls this API on Render, so the
+    browser sends ``Origin`` and preflights every ``application/json`` POST.
+    ``FRONTEND_ORIGIN`` names the one origin allowed to do that. Local
+    development is same-origin through the Vite dev proxy, so an unset value
+    adds no middleware at all. No credentials are sent, so ``allow_origins``
+    stays a literal list rather than a reflected one.
+    """
+    origin = os.environ.get("FRONTEND_ORIGIN", "").strip().rstrip("/")
+    if origin:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=[origin],
+            allow_methods=["GET", "POST", "PUT", "OPTIONS"],
+            allow_headers=["Content-Type"],
+        )
+
+
 app = FastAPI(
     title="ArbitrageIQ API",
     description="Local decision-support API. Illustrative demo assumptions only.",
     version=__version__,
 )
+_configure_cors(app)
 router = APIRouter(prefix=API_PREFIX)
 
 

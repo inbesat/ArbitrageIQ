@@ -11,9 +11,13 @@ Source of truth for every column, key and nullability in this module:
 - ``plans/ACCEPTANCE_TESTS.md`` AT-6.5 — every money column reflects as
   ``NUMERIC`` and never ``REAL``.
 
-Money and rate columns are declared ``NUMERIC(18, 2)``. On SQLite those columns
-carry a declared ``NUMERIC`` type and round-trip a bit-identical ``Decimal``
-with the declared scale preserved, which is what AT-6.5 asserts; the physical
+Money and rate columns carry separate declared scales, because they are not the
+same kind of quantity. A rupee amount is ``NUMERIC(18, 2)``: one paisa is the
+smallest unit the plan ever names. A fractional rate is ``NUMERIC(18, 6)``,
+because ``plans/BUSINESS_RULES.md`` §2 stores TCS as ``0.005`` and TDS as
+``0.001``; at two decimal places those read back as ``0.01`` and ``0.00``, which
+is the wrong rate rather than a rounding preference. Both remain declared
+``NUMERIC`` and never ``REAL``, which is what AT-6.5 asserts; the physical
 storage class and the deliberate no-SQL-aggregate rule are recorded as DEV-13
 in ``plans/PROGRESS.md``.
 """
@@ -33,8 +37,12 @@ from sqlalchemy import (
     Text,
 )
 
-#: Every monetary and rate column. Never ``REAL``, never ``FLOAT`` (ADR-006).
+#: Every rupee column. Never ``REAL``, never ``FLOAT`` (ADR-006).
 MONEY = Numeric(18, 2)
+
+#: Every fractional-rate column — a fraction of a price, not an amount. Never
+#: ``REAL``, never ``FLOAT`` (ADR-006). Six places hold TCS 0.005 and TDS 0.001.
+RATE = Numeric(18, 6)
 
 _metadata = MetaData()
 
@@ -105,20 +113,20 @@ fee_assumptions = Table(
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("effective_from", Date, nullable=False),
-    Column("referral_rate", MONEY, nullable=False),
+    Column("referral_rate", RATE, nullable=False),
     Column("zero_referral_below", MONEY, nullable=False),
     Column("closing_fee", MONEY, nullable=False),
     Column("shipping_fee", MONEY, nullable=False),
     Column("fulfilment_fee", MONEY, nullable=False),
-    Column("product_gst_rate", MONEY, nullable=False),
-    Column("gst_on_fees_rate", MONEY, nullable=False),
+    Column("product_gst_rate", RATE, nullable=False),
+    Column("gst_on_fees_rate", RATE, nullable=False),
     Column("fee_gst_recoverable", Boolean, nullable=False),
-    Column("tcs_rate", MONEY, nullable=False),
-    Column("tds_rate", MONEY, nullable=False),
-    Column("default_sell_through", MONEY, nullable=False),
-    Column("default_salvage", MONEY, nullable=False),
+    Column("tcs_rate", RATE, nullable=False),
+    Column("tds_rate", RATE, nullable=False),
+    Column("default_sell_through", RATE, nullable=False),
+    Column("default_salvage", RATE, nullable=False),
     Column("default_budget", MONEY, nullable=False),
-    Column("default_max_share_per_sku", MONEY, nullable=False),
+    Column("default_max_share_per_sku", RATE, nullable=False),
     Column("note", Text, nullable=False),
 )
 
@@ -130,9 +138,9 @@ budget_plan_runs = Table(
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("created_at", Date, nullable=False),
     Column("budget", MONEY, nullable=False),
-    Column("sell_through", MONEY, nullable=False),
-    Column("salvage", MONEY, nullable=False),
-    Column("max_share_per_sku", MONEY, nullable=False),
+    Column("sell_through", RATE, nullable=False),
+    Column("salvage", RATE, nullable=False),
+    Column("max_share_per_sku", RATE, nullable=False),
     Column("strategy", String(64), nullable=False),
     Column("scenario", String(64), nullable=False),
 )

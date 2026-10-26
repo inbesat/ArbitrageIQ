@@ -7,6 +7,23 @@ refund assumptions, and compare two heuristics for spending an inventory budget.
 Every command in this file was executed on this machine, and the results quoted are the
 ones actually observed. Where a command did not work, that is said plainly.
 
+![ArbitrageIQ landing page](docs/screenshots/landing-hero.png)
+
+`Python 3.12+` · `FastAPI` · `React 18` · `TypeScript 5.6` · `SQLite` · synthetic data only · no outbound calls · tests 245/246 passing
+
+## Contents
+
+- [What this is, and what it is not](#what-this-is-and-what-it-is-not)
+- [Inside the app](#inside-the-app)
+- [Requirements](#requirements)
+- [Setup](#setup)
+- [Running it](#running-it)
+- [Checks](#checks)
+- [Known limitations](#known-limitations)
+- [Deferred integrations](#deferred-integrations)
+- [Not tax advice](#not-tax-advice)
+- [Where to start reading](#where-to-start-reading)
+
 ## What this is, and what it is not
 
 It is a local tool. It reads CSV files that you supply, computes money in `Decimal`
@@ -26,6 +43,57 @@ overheads and income tax, so it is not money in a bank account.
 - Your own imports belong in `data/private/`, which is gitignored, as are `*.db`,
   `*.sqlite*` and `.env`.
 - There is no authentication and no multi-user support. Bind the API to localhost only.
+
+## Inside the app
+
+Every screenshot below was captured on 2026-10-27 on this machine, against the seeded
+synthetic demo database, at a 1400×900 CSS-pixel viewport.
+
+### Landing page
+
+The public page at `/` states the problem, walks the four steps, and carries a live
+contribution simulator that runs real figures from the API.
+
+![Landing page hero](docs/screenshots/landing-hero.png)
+
+*Hero — "Know which SKU actually makes money."*
+
+![Live SKU contribution simulator](docs/screenshots/landing-simulator.png)
+
+*The SKU explorer: choose a preset SKU, adjust the parameters, read the unit economics.*
+
+### The five views
+
+The workspace lives under `/app` and is walked in four steps, with a reference page at the
+end.
+
+| Step | Route | What it shows |
+|---|---|---|
+| 1 · The portfolio | `/app/overview` | Contribution, net revenue and capital at cost in one read |
+| 2 · Your data | `/app/import` | Load the catalogue and the transactions the figures come from |
+| 3 · Realised | `/app/profitability` | Contribution per SKU, with a drill-down to every line |
+| 4 · Expected | `/app/budget-lab` | Two allocation plans compared on expected profit, with a downside scenario |
+| Reference | `/app/methodology` | How every figure is computed, and what the numbers cannot tell you |
+
+![Overview](docs/screenshots/app-overview.png)
+
+*Step 1 · Overview — portfolio contribution, net revenue, capital at cost.*
+
+![Import](docs/screenshots/app-import.png)
+
+*Step 2 · Import — load your own CSV, or explore with the bundled sample.*
+
+![Profitability](docs/screenshots/app-profitability.png)
+
+*Step 3 · Profitability — contribution per SKU, highest first.*
+
+![Budget Lab](docs/screenshots/app-budget-lab.png)
+
+*Step 4 · Budget Lab — Plan A against Plan B on one working budget.*
+
+![Methodology](docs/screenshots/app-methodology.png)
+
+*Reference · Methodology — every term defined, and the limits stated.*
 
 ## Requirements
 

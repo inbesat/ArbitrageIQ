@@ -3,14 +3,15 @@
  * — the landing header, the landing footer and the app shell sidebar — so the identity is
  * now a single component rather than three loose text nodes.
  *
- * The mark is a signature `A`: a bold hand-written letter whose crossbar runs straight
- * through both legs, and a separate shallow swash that leaves the baseline and carries out
- * to the right, where it ends in the accent and the pen lifts. It is the initial of
- * ArbitrageIQ and, read the other way, the contribution line the product measures. Every
- * shape is a filled outline rather than a `stroke-width`, because a pen's weight swells and
- * tapers and a stroke cannot. No corners: each part is one smooth curve. The pen taper is
- * deliberately held back so the letter does not thin to a hairline at 24 px, where the
- * wordmark is hidden on narrow screens and the letter is the only thing naming the brand.
+ * The mark is a signature `A`: a heavy hand-written letter whose crossbar runs straight
+ * through both legs, and a swash that leaves the letter's own left foot and carries out to
+ * the right, where it ends in the accent and the pen lifts. It is the initial of ArbitrageIQ
+ * and, read the other way, the contribution line the product measures. Every shape is a
+ * filled outline rather than a `stroke-width`, because a pen's weight swells and tapers and
+ * a stroke cannot. No corners: each part is one smooth curve. The letter is deliberately the
+ * heaviest thing in the mark and the swash a step below it, because at 24 px — where the
+ * wordmark is hidden on narrow screens — the letter is the only thing naming the brand and a
+ * flourish that outweighs it reads as an underline with a letter on top.
  *
  * Inline SVG, no icon package (`plans/TECH_STACK.md` §3), and colour is inherited through
  * `currentColor`, so the same drawing reads on the ivory landing header, the ink footer and
@@ -20,15 +21,22 @@
 
 /** The letter: left leg, apex, right leg, swelling at the apex and tapering to each foot. */
 const LETTER =
-  'M2.14 20.33 C2.24 20.01 8.27 0.95 8.6 0.95 C8.93 0.95 15.01 20 15.11 20.31 C13.19 20.57 8.93 4.65 8.6 4.65 C8.27 4.65 3.96 20.55 3.86 20.87 Z';
+  'M2.1 20.46 C2.2 20.14 8.47 0.45 8.8 0.45 C9.13 0.45 15.5 20.11 15.59 20.43 C13.11 20.85 9.13 4.75 8.8 4.75 C8.47 4.75 4.4 20.82 4.3 21.14 Z';
 
-/** The crossbar: straight and evenly weighted, its tapered ends buried inside the legs. */
+/**
+ * The crossbar: a straight, evenly weighted bar. Both of its ends finish *inside* the legs,
+ * so the visible stroke simply meets each inner edge — no overshoot, no taper out into the
+ * counter, and nothing that reads as a leaf.
+ */
 const CROSSBAR =
-  'M5.17 14.4 C5.5 14.38 8.53 13.99 8.86 13.97 C9.19 13.95 12.24 14.02 12.57 14 C12.3 15.12 9.27 15.51 8.94 15.53 C8.61 15.55 5.56 15.48 5.23 15.5 Z';
+  'M6.15 14.03 C6.48 14.01 7.21 13.86 7.54 13.83 C7.87 13.81 8.41 13.77 8.74 13.75 C9.08 13.73 9.61 13.69 9.95 13.67 C10.28 13.65 11.32 13.69 11.66 13.67 C11.41 15.19 10.39 15.35 10.05 15.37 C9.72 15.39 9.19 15.43 8.86 15.45 C8.52 15.47 7.99 15.5 7.66 15.53 C7.33 15.55 6.59 15.5 6.25 15.53 Z';
 
-/** The swash: one shallow sweep just under the baseline, carried out to the right. */
+/**
+ * The swash: the pen's exit. It begins on the letter's own left foot, so the two shapes
+ * overlap and the mark stays one unbroken stroke, then thins away as it carries right.
+ */
 const SWASH =
-  'M4.67 22.16 C4.99 22.22 8.49 22.54 8.82 22.55 C9.15 22.56 15.08 21.99 15.41 21.92 C15.73 21.85 27.02 19.11 27.34 19.01 C27.14 19.49 16.12 23.61 15.79 23.68 C15.47 23.75 9.11 24.06 8.78 24.05 C8.45 24.04 4.86 22.91 4.53 22.84 Z';
+  'M4.38 20.34 C4.68 20.49 7.36 22.21 7.69 22.26 C8.02 22.3 14.08 22.23 14.4 22.16 C14.73 22.09 24.59 18.84 24.91 18.74 C24.78 19.37 14.92 22.97 14.6 23.04 C14.27 23.11 7.84 23.59 7.51 23.54 C7.18 23.5 3.92 22.01 3.62 21.86 Z';
 
 export interface LogoProps {
   /**
@@ -59,13 +67,13 @@ export function Logo({
 
   return (
     <span className={`inline-flex shrink-0 items-center gap-2 ${className ?? 'h-7'}`}>
-      <svg viewBox="1.89 0.7 26.16 23.6" className="h-full w-auto shrink-0" {...a11y}>
+      <svg viewBox="1.85 0.2 25 23.59" className="h-full w-auto shrink-0" {...a11y}>
         <g fill="currentColor">
           <path d={LETTER} />
           <path d={SWASH} />
           <path d={CROSSBAR} />
         </g>
-        <rect x="25.6" y="18" width="2.2" height="2.2" rx=".5" className={accentClassName} />
+        <rect x="24.4" y="17.9" width="2.2" height="2.2" rx=".5" className={accentClassName} />
       </svg>
 
       {showWordmark && (

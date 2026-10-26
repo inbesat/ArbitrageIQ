@@ -320,7 +320,7 @@ test('one Logo component carries the brand, drawn in tokens with no raw hex', ()
   // `tailwind.config.js`.
   assert.doesNotMatch(logo, /#[0-9a-fA-F]{3,8}\b/);
   // A viewBox drawn tight on the ink itself, so the mark cannot inherit a dead margin.
-  assert.match(logo, /viewBox="1\.89 0\.7 26\.16 23\.6"/);
+  assert.match(logo, /viewBox="1\.85 0\.2 25 23\.59"/);
   // Honest, small props: a size class, the lockup toggle and the accent's own colour.
   assert.match(logo, /showWordmark = true/);
   assert.match(logo, /accentClassName/);

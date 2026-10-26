@@ -1,0 +1,27 @@
+[project]
+name = "arbitrageiq"
+version = "0.0.0"
+description = "Local decision-support tool for Indian ecommerce reseller contribution profit."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic>=2",
+    "sqlalchemy>=2",
+    "pandas>=2",
+    "python-multipart",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["arbitrageiq"]
+
+[tool.pytest.ini_options]
+# rootdir resolves to backend/ because this file sits here and carries this table.
+# `pythonpath = ["."]` therefore puts backend/ on sys.path, so `import arbitrageiq`
+# works when pytest is invoked as `pytest backend\tests` from the repository root.
+pythonpath = ["."]
+testpaths = ["tests"]

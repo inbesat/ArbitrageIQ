@@ -1,0 +1,31 @@
+{
+  "fixture": "golden_v1",
+  "source": "plans/BUSINESS_RULES.md §10.1 (Golden fixture v1 — the Rs 1,624.08 scenario)",
+  "nature": "Synthetic test fixture. Not a real Amazon settlement, not a real order, not tax advice.",
+  "expected_values_note": "This file holds PARAMETERS ONLY. No expected value is stored here: per plans/BUSINESS_RULES.md §10.4.2 an expectation must never be produced by running the implementation under test. The expected values live as literals in backend/tests/test_profit.py, copied from plans/ACCEPTANCE_TESTS.md AT-1/AT-2/AT-3 and from the hand derivations in plans/BUSINESS_RULES.md §10.2 and §10.3.",
+  "money_encoding": "all money and rate values are decimal STRINGS (ADR-024, ADR-006): never JSON floats",
+  "line": {
+    "sku": "GOLDEN-V1",
+    "transaction_id": "GOLDEN-V1",
+    "units_sold": 10,
+    "returned_units": 1,
+    "selling_price": "1180.00",
+    "discount_per_unit": "0.00",
+    "refund_per_returned_unit": null,
+    "ads_cost": "200.00",
+    "other_charges": "0.00",
+    "settlement_fees_total": null
+  },
+  "landed_unit_cost": "500.00",
+  "resale_fraction": "0",
+  "assumptions": {
+    "referral_rate": "0.08",
+    "zero_referral_below": "1000.00",
+    "closing_fee": "25.00",
+    "shipping_fee": "65.00",
+    "fulfilment_fee": "0.00",
+    "product_gst_rate": "0.18",
+    "gst_on_fees_rate": "0.18",
+    "fee_gst_recoverable": false
+  }
+}

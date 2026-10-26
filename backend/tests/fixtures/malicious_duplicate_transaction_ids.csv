@@ -1,0 +1,5 @@
+transaction_id,sku,order_date,units_sold,returned_units,selling_price,discount_per_unit,refund_per_returned_unit,settlement_fees_total,ads_cost,other_charges
+T99901,BOTTLE-750,2026-09-15,1,0,1180.00,0.00,,,0.00,0.00
+T99902,BOTTLE-750,2026-09-16,1,0,1180.00,0.00,,,0.00,0.00
+T99901,BOTTLE-750,2026-09-17,1,0,1180.00,0.00,,,0.00,0.00
+T99902,BOTTLE-750,2026-09-18,1,0,1180.00,0.00,,,0.00,0.00

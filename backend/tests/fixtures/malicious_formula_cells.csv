@@ -1,0 +1,5 @@
+transaction_id,sku,order_date,units_sold,returned_units,selling_price,discount_per_unit,refund_per_returned_unit,settlement_fees_total,ads_cost,other_charges
+=cmd|'/c calc'!A0,BOTTLE-750,2026-09-15,1,0,1180.00,0.00,,,0.00,0.00
++1+1,BOTTLE-750,2026-09-16,1,0,1180.00,0.00,,,0.00,0.00
+-2-2,BOTTLE-750,2026-09-17,1,0,1180.00,0.00,,,0.00,0.00
+@SUM(1),BOTTLE-750,2026-09-18,1,0,1180.00,0.00,,,0.00,0.00

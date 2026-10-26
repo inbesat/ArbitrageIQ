@@ -1,0 +1,222 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  T13 design tokens and base typography. Tailwind v3 (plans/TECH_STACK.md §3).
+
+  The font stacks are system-only on purpose. The frontend design directive asks for
+  Manrope + Inter but forbids a runtime Google Fonts dependency, and bundling a font
+  package would add a dependency that plans/TECH_STACK.md §7 puts behind a DECISIONS.md
+  entry. The named families are tried first, so installing them locally upgrades the
+  rendering with no code change. See plans/PROGRESS.md §8.
+
+  The landing page's reference sets Space Grotesk, and --font-landing below names it first.
+  It is still deliberately not bundled — no CDN link, no @fontsource package, no change to
+  index.html — because a font package would be a new runtime dependency behind a
+  DECISIONS.md entry. The name is tried first, so a machine that already has Space Grotesk
+  installed renders the landing in it, and every other machine falls back to the system
+  stack with no layout or behaviour difference.
+
+  Motion: CSS transitions for hover/focus, plus two libraries the operator explicitly
+  approved and requested — `lenis` for inertial wheel scrolling and `motion` for
+  scroll-triggered reveals (see `frontend/src/lib/smooth-scroll.tsx` and
+  `frontend/src/components/Reveal.tsx`, and plans/PROGRESS.md §8). Both are switched
+  off under `prefers-reduced-motion`, which is still enforced at the bottom of this file.
+
+  Typography (DEV-42): the stacks below are still system-only — see the paragraph above —
+  so this pass refines the *rhythm* instead of the typeface. Kerning, ligatures and optical
+  sizing are switched on for the whole page, headings get a slightly tighter default
+  tracking, paragraphs break without leaving a single orphaned word, and figures that are
+  read as columns sit on tabular numerals. The per-size leading and tracking live on the
+  `fontSize` steps in `frontend/tailwind.config.js`, because they belong to the size rather
+  than to the call site.
+*/
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Manrope', var(--font-sans);
+  /* The public landing page. Same pattern as the two above: name the intended family, fall
+     back to the system stack, bundle nothing. */
+  --font-landing: 'Space Grotesk', var(--font-sans);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    /* Anchored jumps (the skip link) travel rather than teleport. Wheel input is
+       unaffected: inertial wheel scrolling needs a library, which is why it is not
+       here. */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-navy antialiased;
+    font-size: 15px;
+    line-height: 1.55;
+    /* Text is drawn a touch tighter than Tailwind's default; headings a touch more. */
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    /* Kerning, standard ligatures and contextual alternates for the whole page rather than
+       per family, and optical sizing so a variable font picks its own grade for the size.
+       Both are what the browser already does for most fonts; naming them keeps the intent
+       visible and stops a later reset from switching them off. */
+    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+    font-optical-sizing: auto;
+  }
+
+  /* A paragraph breaks to avoid leaving one word alone on its last line. `balance` is for
+     headings, whose line count is small and known; `pretty` is the right tool for prose,
+     where a balanced wrap would fight the column. Unsupported engines ignore both. */
+  p {
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+    /* Only reached when no `text-*` step sets its own tracking, which every display step now
+       does; this is the floor for a heading that picked a size Tailwind built in. */
+    letter-spacing: -0.017em;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    @apply bg-teal-wash text-teal-dark;
+  }
+
+  /* One visible focus ring everywhere. Never `outline: none` without a replacement. */
+  :focus-visible {
+    @apply rounded outline-none ring-2 ring-teal ring-offset-2 ring-offset-canvas;
+  }
+}
+
+@layer utilities {
+  /* Every figure a user compares sits on tabular numerals so columns align. A `.tnum` class
+     is the explicit opt-in for a figure standing on its own; a table body is opted in
+     wholesale, because a cell in a money column is read against the cell above it and a
+     proportional digit would make the column shift as the values change. */
+  .tnum,
+  .table-scroll tbody {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A wide table scrolls inside its own region, so the page never scrolls sideways.
+     It is also capped in height, which is what gives `.table-head` a box to stick to:
+     the header holds while the rows move under it, and the wheel does not chain out of
+     the box at either end. `data-lenis-prevent` on the element keeps Lenis off it. */
+  .table-scroll {
+    @apply block max-h-[70vh] w-full overflow-auto overscroll-contain;
+  }
+
+  /* The one table header. Sticky, so a long catalogue stays readable, and ruled with an
+     inset shadow rather than a border: a sticky cell's own border is dropped under
+     `border-collapse` in some engines. */
+  .table-head th {
+    @apply sticky top-0 z-10 bg-surface;
+    box-shadow: inset 0 -1px 0 theme(colors.rule);
+  }
+
+  /* One card treatment for the whole interior — radius, hairline and the single shadow
+     token — so elevation means the same thing on every screen. A tinted panel (the
+     error and disclosure surfaces) sets its own background instead of using this. */
+  .card {
+    @apply rounded-card border border-rule bg-surface shadow-card;
+  }
+
+  /* Small caps label. Used for the eyebrow above a heading. The size, its leading and its
+     +0.1em tracking all come from the `eyebrow` step in tailwind.config.js, so a call site
+     never restates them: a second `tracking-[0.14em]` in a component is a drift, not a
+     variant. Weight and colour are the only two things a tone may change. */
+  .eyebrow {
+    @apply font-sans text-eyebrow font-semibold uppercase text-muted;
+  }
+
+  /* A route body fades in once, on mount only. `animation-fill-mode: both` means the
+     final frame is the resting state, so nothing depends on the animation running. */
+  .enter {
+    animation: arb-enter 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  /* Interactive surfaces rise a little on hover. Transform only, so it stays cheap. */
+  .lift {
+    transition:
+      transform 180ms cubic-bezier(0.2, 0, 0, 1),
+      box-shadow 180ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .lift:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* --- lenis: inertial wheel scrolling --------------------------------------------
+   Lenis ships these four rules in its own stylesheet. They are inlined here so the
+   shipped CSS has one source and the package's file layout is not a build dependency. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* --- ambient background ---------------------------------------------------------
+   Three soft radial washes behind the content. Pointer-events:none, so it never intercepts a
+   click. The frame is what scrolls: it is `fixed` to the viewport and Motion translates it a
+   little as the page moves (see `AmbientBloom` in `frontend/src/App.tsx`), so the bloom drifts
+   both on its own slow keyframe and against the content. Transform only — nothing here
+   touches width, height or an offset property. */
+.app-aurora-frame {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.app-aurora {
+  position: fixed;
+  inset: -10% -10% -10% -10%;
+  z-index: 0;
+  pointer-events: none;
+  animation: drift 26s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  background:
+    radial-gradient(58rem 38rem at 10% -6%, rgba(15, 118, 110, 0.13), transparent 62%),
+    radial-gradient(46rem 34rem at 98% 2%, rgba(20, 35, 56, 0.10), transparent 64%),
+    radial-gradient(44rem 30rem at 62% 112%, rgba(15, 118, 110, 0.09), transparent 62%);
+}
+
+@keyframes arb-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Motion is opacity/transform only, and it stops when the user asks it to. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

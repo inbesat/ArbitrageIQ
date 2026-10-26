@@ -1,0 +1,22 @@
+# Ruff configuration for the ArbitrageIQ backend.
+#
+# Scope decision recorded in T01 (plans/TECH_STACK.md §4 requires a guard against float
+# literals *used as money*): Ruff has no rule that can distinguish a money literal from a
+# dimensionless fraction, so the approved fallback in TECH_STACK.md §4 applies — a small
+# pytest that walks the AST of money.py, profit.py and the money paths of allocator.py.
+# That test file belongs to a task later than T01, so the guard is implemented in T02 and
+# this file carries only what is genuinely enforceable now. Recorded in plans/PROGRESS.md.
+
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # import sorting
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]

@@ -1,0 +1,11 @@
+sku,name,category,supplier_unit_cost,inbound_unit_cost,packaging_unit_cost,target_price,current_stock,min_order_qty,max_supply,cost_updated_on
+DIYA-SET-12,Painted Diya Set 12 pcs,festive,210.00,6.00,6.00,499.00,30,6,200,2026-10-10
+RANG-KIT-01,Rangoli Stencil and Colour Kit,festive,120.00,3.00,3.00,299.00,80,24,500,2026-10-08
+POTLI-SLK-1,Silk Potli Gift Bag,gifting,260.00,4.00,3.00,549.00,15,10,150,2026-09-02
+TORAN-FLW-1,Artificial Flower Door Toran,decor,250.00,6.00,5.00,549.00,25,6,120,2026-10-12
+BOTTLE-750,Steel Bottle 750ml,kitchen,440.00,8.00,6.00,799.00,60,12,240,2026-10-01
+PHONE-STND,Foldable Phone Stand,accessories,85.00,2.00,2.00,249.00,200,50,600,2026-10-11
+CNDL-GIFT-1,Scented Candle Gift Box,gifting,400.00,7.00,8.00,749.00,10,8,100,2026-10-09
+KURTA-M-L,Men Cotton Kurta L,apparel,720.00,12.00,10.00,1299.00,12,6,60,2026-08-20
+EARBUD-BT-1,Budget Bluetooth Earbuds,electronics,980.00,10.00,12.00,1150.00,8,5,50,2026-10-13
+TIFFIN-3,Stainless Steel Tiffin 3 tier,kitchen,380.00,9.00,7.00,899.00,40,10,180,2026-10-04

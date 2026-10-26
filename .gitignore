@@ -1,0 +1,28 @@
+# ArbitrageIQ — paths that must never enter version control.
+# Contract: plans/SECURITY.md §4.2. Every entry below is required there.
+
+# Environment and secrets
+.env
+.env.*
+
+# Local databases (disposable; re-seed to restore a clean state)
+*.db
+*.sqlite
+*.sqlite3
+
+# Operator data — never committed
+data/private/
+
+# Python
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Node / frontend build output
+node_modules/
+dist/
+
+# Logs
+*.log
